@@ -42,7 +42,7 @@ public class Compression {
 
 
 
-    public BitSet encode(String text)
+    public BitSet encodeHuffman(String text)
     {
         ArrayList<String> encodedList = new ArrayList<>();
         for(int i=0;i<text.length();i++)
@@ -55,12 +55,10 @@ public class Compression {
             totalSize+=item.length();
         }
         System.out.println();
-        encodedTextLength = encodedList.size();
         int k=0;
-        int size = encodedTextLength;
+        int size = encodedList.size();
         BitSet bitSet = new BitSet(size);
-        System.out.println("Rozmiar: "+totalSize);
-        skipN = 8-totalSize%8;
+        skipN = 8-totalSize%8; //zapis do pliku zawsze jest na 8 bitach, muszę wiedzieć ile z nich jest nieważnych
         for(String batch:encodedList)
         {
             for(int i=0;i<batch.length();i++)
@@ -75,6 +73,38 @@ public class Compression {
         return bitSet;
     }
 
+    public BitSet encode(String text)
+    {
+        ArrayList<String> encodedList = new ArrayList<>();
+        for(int i=0;i<text.length();i++)
+        {
+            encodedList.add(code.get(text.charAt(i)));
+        }
+
+        int totalSize= 0;
+        for(String item : encodedList){
+            totalSize+=item.length();
+        }
+        System.out.println();
+        int k=0;
+        BitSet bitSet = new BitSet(totalSize);
+        skipN = 8-totalSize%8; //zapis do pliku zawsze jest na 8 bitach, muszę wiedzieć ile z nich jest nieważnych
+        for(String batch:encodedList)
+        {
+            for(int i=0;i<batch.length();i++)
+            {
+                if(batch.charAt(i)=='1')
+                {
+                    bitSet.set(totalSize-k-1);
+                }
+                k++;
+            }
+        }
+        bitSet.set(totalSize+1);// BitSet pomija ostatnie zera dlatego trzeba dodać 1 na koniec
+        skipN = 8-totalSize%8;
+        return bitSet;
+    }
+
     public void save(BitSet data) throws IOException {
         byte[] bytes = data.toByteArray();
         File outputFile = new File("zakodowany.txt");
@@ -83,8 +113,8 @@ public class Compression {
         fos.flush();
         fos.close();
 
-        Writer wr = new FileWriter("dlugosc.txt");
-        wr.write(encodedTextLength+"");
+        Writer wr = new FileWriter("skipN.txt");
+        wr.write(skipN+"");
         wr.close();
 
         FileOutputStream fileOut =  new FileOutputStream("mapping.ser");
@@ -192,16 +222,17 @@ public class Compression {
         k++;
         }
         loadedTextList= loadedBatches;
-        loadedText= batches.toString();
+        loadedText= batches.reverse().toString();
 
-        encodedTextLength =Integer.valueOf(new Scanner(new File("dlugosc.txt")).useDelimiter("\\Z").next());
+        loadedSkipN =Integer.valueOf(new Scanner(new File("skipN.txt")).useDelimiter("\\Z").next());
     }
 
 
 
     public String decode(String text){
+        text = text.substring(loadedSkipN);
         StringBuilder decodedText=new StringBuilder();
-        for(int k=0;k<encodedTextLength;k++) {
+        for(int k=0;k<text.length()/loadedCodeLength;k++) {
 
                 decodedText.append(loadedCode.get(text.substring(k*loadedCodeLength,k * loadedCodeLength+loadedCodeLength)));
         }
@@ -232,8 +263,9 @@ public class Compression {
     public void process() throws FileNotFoundException {
         Scanner scanner = new Scanner( new File("norm_wiki_sample.txt") );
         sourceText = scanner.useDelimiter("\\A").next();
+        //spacja na końcu tekstu czasem coś psuje, dlatego ją usuwam
         if(sourceText.charAt(sourceText.length()-1)==' ')
-        sourceText = sourceText.substring(0,sourceText.length()-1);
+             sourceText = sourceText.substring(0,sourceText.length()-1);
         Huffman huffman = new Huffman();
         huffman.computeFrequencies(sourceText);
         huffman.createHuffmanTree();
@@ -250,6 +282,8 @@ public class Compression {
             e.printStackTrace();
         }
 
+
+        //stała długośc kodu
 //        create(sourceText);
 //        try {
 //            save(encode(sourceText));

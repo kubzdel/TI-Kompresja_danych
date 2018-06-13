@@ -4,6 +4,8 @@ public class HuffmanNode implements  Comparable<HuffmanNode>,Serializable {
 
     public char character;
     public int frequency;
+    private HuffmanNode leftChild = null;
+    private HuffmanNode rightChild = null;
 
     public HuffmanNode getLeftChild() {
         return leftChild;
@@ -20,9 +22,6 @@ public class HuffmanNode implements  Comparable<HuffmanNode>,Serializable {
     public void setRightChild(HuffmanNode rightChild) {
         this.rightChild = rightChild;
     }
-
-    private HuffmanNode leftChild = null;
-    private HuffmanNode rightChild = null;
 
     public HuffmanNode(int frequency) {
         this.frequency = frequency;
